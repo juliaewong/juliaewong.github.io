@@ -5,11 +5,13 @@
   <title>Julia Wong – Interactive PCB</title>
 
   <!-- model-viewer -->
-  <script type="module"
+  <script
+    type="module"
     src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
   </script>
 
   <style>
+    /* ===== Base Layout ===== */
     body {
       margin: 0;
       background: #e6e6ee;
@@ -18,6 +20,7 @@
       align-items: center;
       height: 100vh;
       overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     model-viewer {
@@ -25,28 +28,101 @@
       height: 90vh;
     }
 
-    /* Invisible-but-clickable PCB buttons */
+    /* ===== Invisible PCB Buttons ===== */
     .pcb-button {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.0);
-      border: 2px solid rgba(255, 255, 255, 0.0);
+      background: rgba(255, 255, 255, 0);
+      border: 2px solid rgba(255, 255, 255, 0);
       cursor: pointer;
     }
 
-    /* OPTIONAL: turn this on while positioning */
+    /* Uncomment while positioning hotspots */
     /*
     .pcb-button {
-      background: rgba(255, 0, 0, 0.3);
+      background: rgba(255, 0, 0, 0.35);
       border: 2px solid red;
     }
     */
+
+    /* ===== Overlay UI ===== */
+    .ui-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .ui-panel {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 10px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      backdrop-filter: blur(6px);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    /* ESC button */
+    .ui-exit {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .ui-exit kbd {
+      font-family: monospace;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 12px;
+    }
+
+    /* Instructions */
+    .ui-instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      max-width: 320px;
+    }
+
+    .ui-instructions strong {
+      display: block;
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 
 <body>
-  
+
+  <!-- ===== UI OVERLAY ===== -->
+  <div class="ui-overlay">
+
+    <!-- ESC / Exit -->
+    <div class="ui-panel ui-exit" onclick="exitPCB()">
+      <kbd>ESC</kbd>
+      <span>Exit PCB view</span>
+    </div>
+
+    <!-- Instructions -->
+    <div class="ui-panel ui-instructions">
+      <strong>How to interact</strong>
+      🖱 Click + drag to rotate the board<br>
+      ⇧ Hold <b>Shift</b> + drag to pan<br><br>
+      🔘 Click components to explore the site
+    </div>
+
+  </div>
+
+  <!-- ===== 3D PCB VIEWER ===== -->
   <model-viewer
     id="pcb"
     src="pcb_site.glb"
@@ -60,7 +136,7 @@
     shadow-intensity="1"
     tone-mapping="aces"
     interaction-prompt="none">
-    
+
     <!-- 🔘 RESUME BUTTON -->
     <button
       class="pcb-button"
@@ -81,6 +157,7 @@
 
   </model-viewer>
 
+  <!-- ===== SCRIPT ===== -->
   <script>
     /* -------- Navigation -------- */
     function goResume() {
@@ -91,24 +168,35 @@
       window.location.href = "timeline.html";
     }
 
-    /* -------- KiCad → WebGL Fixes -------- */
-    const viewer = document.getElementById('pcb');
+    function exitPCB() {
+      window.location.href = "Home.html"; // or index.html if preferred
+    }
 
-    viewer.addEventListener('load', () => {
+    /* Keyboard ESC support */
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        exitPCB();
+      }
+    });
+
+    /* -------- KiCad → WebGL Fixes -------- */
+    const viewer = document.getElementById("pcb");
+
+    viewer.addEventListener("load", () => {
       const model = viewer.model;
       if (!model) return;
 
       model.materials.forEach(mat => {
-        // Fix backface culling
+        // Backface visibility
         mat.doubleSided = true;
 
-        // Improve visibility
+        // Tone down metallic glare
         if (mat.pbrMetallicRoughness) {
           mat.pbrMetallicRoughness.metallicFactor *= 0.6;
           mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
         }
 
-        // Slight transparency for 7-seg housing
+        // 7-segment housing transparency
         const name = (mat.name || "").toLowerCase();
         if (name.includes("display") || name.includes("segment")) {
           const base = mat.pbrMetallicRoughness.baseColorFactor;
