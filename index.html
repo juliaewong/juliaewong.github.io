@@ -11,7 +11,6 @@
   </script>
 
   <style>
-    /* ===== Base Layout ===== */
     body {
       margin: 0;
       background: #e6e6ee;
@@ -28,7 +27,6 @@
       height: 90vh;
     }
 
-    /* ===== Invisible PCB Buttons ===== */
     .pcb-button {
       width: 40px;
       height: 40px;
@@ -38,15 +36,6 @@
       cursor: pointer;
     }
 
-    /* Uncomment while positioning hotspots */
-    /*
-    .pcb-button {
-      background: rgba(255, 0, 0, 0.35);
-      border: 2px solid red;
-    }
-    */
-
-    /* ===== Overlay UI ===== */
     .ui-overlay {
       position: fixed;
       inset: 0;
@@ -66,7 +55,6 @@
       line-height: 1.4;
     }
 
-    /* ESC button */
     .ui-exit {
       position: absolute;
       top: 16px;
@@ -86,7 +74,6 @@
       font-size: 12px;
     }
 
-    /* Instructions */
     .ui-instructions {
       position: absolute;
       bottom: 20px;
@@ -105,21 +92,17 @@
 
   <!-- ===== UI OVERLAY ===== -->
   <div class="ui-overlay">
-
-    <!-- ESC / Exit -->
     <div class="ui-panel ui-exit" onclick="exitPCB()">
       <kbd>ESC</kbd>
       <span>Exit PCB view</span>
     </div>
 
-    <!-- Instructions -->
     <div class="ui-panel ui-instructions">
       <strong>How to interact</strong>
       🖱 Click + drag to rotate the board<br>
       ⇧ Hold <b>Shift</b> + drag to pan<br><br>
       🔘 Click components to explore the site
     </div>
-
   </div>
 
   <!-- ===== 3D PCB VIEWER ===== -->
@@ -169,34 +152,32 @@
     }
 
     function exitPCB() {
-      window.location.href = "Home.html"; // or index.html if preferred
+      window.location.href = "Home.html";
     }
 
-    /* Keyboard ESC support */
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        exitPCB();
-      }
+      if (e.key === "Escape") exitPCB();
     });
 
-    /* -------- KiCad → WebGL Fixes -------- */
+    /* -------- 3D Load Fallback -------- */
     const viewer = document.getElementById("pcb");
+    const FALLBACK_URL = "timeline.html";
+    let modelLoaded = false;
 
     viewer.addEventListener("load", () => {
+      modelLoaded = true;
+
       const model = viewer.model;
       if (!model) return;
 
       model.materials.forEach(mat => {
-        // Backface visibility
         mat.doubleSided = true;
 
-        // Tone down metallic glare
         if (mat.pbrMetallicRoughness) {
           mat.pbrMetallicRoughness.metallicFactor *= 0.6;
           mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
         }
 
-        // 7-segment housing transparency
         const name = (mat.name || "").toLowerCase();
         if (name.includes("display") || name.includes("segment")) {
           const base = mat.pbrMetallicRoughness.baseColorFactor;
@@ -204,6 +185,16 @@
         }
       });
     });
+
+    viewer.addEventListener("error", () => {
+      window.location.replace(FALLBACK_URL);
+    });
+
+    setTimeout(() => {
+      if (!modelLoaded) {
+        window.location.replace(FALLBACK_URL);
+      }
+    }, 4000); // 4s timeout
   </script>
 
 </body>
