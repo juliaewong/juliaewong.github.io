@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Julia Wong – Interactive PCB</title>
 
-  <!-- model-viewer (safe to load unconditionally) -->
+  <!-- model-viewer -->
   <script
     type="module"
     src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
@@ -85,6 +85,31 @@
       display: block;
       margin-bottom: 6px;
     }
+
+    /* ===== Fallback Notice ===== */
+    #fallbackNotice {
+      position: fixed;
+      inset: 0;
+      background: rgba(230,230,238,0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    #fallbackNotice .box {
+      background: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    #fallbackNotice strong {
+      display: block;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 
@@ -120,7 +145,6 @@
     tone-mapping="aces"
     interaction-prompt="none">
 
-    <!-- 🔘 RESUME BUTTON -->
     <button
       class="pcb-button"
       slot="hotspot-resume"
@@ -129,7 +153,6 @@
       onclick="goResume()">
     </button>
 
-    <!-- 🔘 TIMELINE BUTTON -->
     <button
       class="pcb-button"
       slot="hotspot-timeline"
@@ -140,17 +163,34 @@
 
   </model-viewer>
 
+  <!-- ===== FALLBACK POPUP ===== -->
+  <div id="fallbackNotice">
+    <div class="box">
+      <strong>Best viewed on desktop</strong>
+      <p style="margin:0; font-size:14px; line-height:1.5;">
+        This interactive 3D experience works best on a computer or laptop.
+        Redirecting you to a simplified view…
+      </p>
+    </div>
+  </div>
+
   <!-- ===== SCRIPT ===== -->
   <script>
-    /* -------- iOS Safari hard fallback (RUNS FIRST) -------- */
+    function showFallbackAndRedirect(url) {
+      document.getElementById("fallbackNotice").style.display = "flex";
+      setTimeout(() => {
+        window.location.replace(url);
+      }, 2000);
+    }
+
+    /* --- iOS Safari hard fallback --- */
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
     if (isIOS && isSafari) {
-      window.location.replace("timeline.html");
+      showFallbackAndRedirect("timeline.html");
     }
 
-    /* -------- Navigation -------- */
     function goResume() {
       window.location.href = "resume.html";
     }
@@ -167,45 +207,36 @@
       if (e.key === "Escape") exitPCB();
     });
 
-    /* -------- PCB-only logic -------- */
     const viewer = document.getElementById("pcb");
-    const FALLBACK_URL = "timeline.html";
     let modelLoaded = false;
 
-    if (viewer) {
+    viewer.addEventListener("load", () => {
+      modelLoaded = true;
+      const model = viewer.model;
+      if (!model) return;
 
-      viewer.addEventListener("load", () => {
-        modelLoaded = true;
-
-        const model = viewer.model;
-        if (!model) return;
-
-        model.materials.forEach(mat => {
-          mat.doubleSided = true;
-
-          if (mat.pbrMetallicRoughness) {
-            mat.pbrMetallicRoughness.metallicFactor *= 0.6;
-            mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
-          }
-
-          const name = (mat.name || "").toLowerCase();
-          if (name.includes("display") || name.includes("segment")) {
-            const base = mat.pbrMetallicRoughness.baseColorFactor;
-            base[3] = 0.15;
-          }
-        });
-      });
-
-      viewer.addEventListener("error", () => {
-        window.location.replace(FALLBACK_URL);
-      });
-
-      setTimeout(() => {
-        if (!modelLoaded) {
-          window.location.replace(FALLBACK_URL);
+      model.materials.forEach(mat => {
+        mat.doubleSided = true;
+        if (mat.pbrMetallicRoughness) {
+          mat.pbrMetallicRoughness.metallicFactor *= 0.6;
+          mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
         }
-      }, 4000);
-    }
+        const name = (mat.name || "").toLowerCase();
+        if (name.includes("display") || name.includes("segment")) {
+          mat.pbrMetallicRoughness.baseColorFactor[3] = 0.15;
+        }
+      });
+    });
+
+    viewer.addEventListener("error", () => {
+      showFallbackAndRedirect("timeline.html");
+    });
+
+    setTimeout(() => {
+      if (!modelLoaded) {
+        showFallbackAndRedirect("timeline.html");
+      }
+    }, 4000);
   </script>
 
 </body>
