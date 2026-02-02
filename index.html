@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Julia Wong – Interactive PCB</title>
 
-  <!-- model-viewer -->
+  <!-- model-viewer (safe to load unconditionally) -->
   <script
     type="module"
     src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
@@ -142,6 +142,14 @@
 
   <!-- ===== SCRIPT ===== -->
   <script>
+    /* -------- iOS Safari hard fallback (RUNS FIRST) -------- */
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    if (isIOS && isSafari) {
+      window.location.replace("timeline.html");
+    }
+
     /* -------- Navigation -------- */
     function goResume() {
       window.location.href = "resume.html";
@@ -159,42 +167,45 @@
       if (e.key === "Escape") exitPCB();
     });
 
-    /* -------- 3D Load Fallback -------- */
+    /* -------- PCB-only logic -------- */
     const viewer = document.getElementById("pcb");
     const FALLBACK_URL = "timeline.html";
     let modelLoaded = false;
 
-    viewer.addEventListener("load", () => {
-      modelLoaded = true;
+    if (viewer) {
 
-      const model = viewer.model;
-      if (!model) return;
+      viewer.addEventListener("load", () => {
+        modelLoaded = true;
 
-      model.materials.forEach(mat => {
-        mat.doubleSided = true;
+        const model = viewer.model;
+        if (!model) return;
 
-        if (mat.pbrMetallicRoughness) {
-          mat.pbrMetallicRoughness.metallicFactor *= 0.6;
-          mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
-        }
+        model.materials.forEach(mat => {
+          mat.doubleSided = true;
 
-        const name = (mat.name || "").toLowerCase();
-        if (name.includes("display") || name.includes("segment")) {
-          const base = mat.pbrMetallicRoughness.baseColorFactor;
-          base[3] = 0.15;
-        }
+          if (mat.pbrMetallicRoughness) {
+            mat.pbrMetallicRoughness.metallicFactor *= 0.6;
+            mat.pbrMetallicRoughness.roughnessFactor *= 0.9;
+          }
+
+          const name = (mat.name || "").toLowerCase();
+          if (name.includes("display") || name.includes("segment")) {
+            const base = mat.pbrMetallicRoughness.baseColorFactor;
+            base[3] = 0.15;
+          }
+        });
       });
-    });
 
-    viewer.addEventListener("error", () => {
-      window.location.replace(FALLBACK_URL);
-    });
-
-    setTimeout(() => {
-      if (!modelLoaded) {
+      viewer.addEventListener("error", () => {
         window.location.replace(FALLBACK_URL);
-      }
-    }, 4000); // 4s timeout
+      });
+
+      setTimeout(() => {
+        if (!modelLoaded) {
+          window.location.replace(FALLBACK_URL);
+        }
+      }, 4000);
+    }
   </script>
 
 </body>
